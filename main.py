@@ -4,7 +4,7 @@ from typing import Optional,List
 from fastapi.responses import HTMLResponse,JSONResponse
 from config.database import Session,engine,Base
 from models.movie import Movie as MovieModel
-
+from fastapi.encoders import jsonable_encoder
 
 Base.metadata.create_all(bind=engine)
 
@@ -31,26 +31,6 @@ app = FastAPI()
 app.title = "Mi aplicación con FastAPI"
 app.version = '0.0.1'
 
-movies2 =[
-    {
-        "id":1,
-        "title":'Avatar',
-        "overview":"En un exuberante planeta",
-        "year":"2009",
-        "rating": 7.8,
-        "category":"Accion"
-    },
-    {
-        "id":2,
-        "title":'Avatar 2',
-        "overview":"En un exuberante planeta",
-        "year":"2009",
-        "rating": 7.8,
-        "category":"Accion"
-    }
-]
-
-
 db=Session()
 
 @app.get('/', tags=['Home'])
@@ -61,25 +41,20 @@ def root():
 @app.get('/movies', tags=['movies'], response_model=List[Movie])
 def get_movies()-> List[Movie]:
 
-    moviestemp = db.query(Movie).all()
-    movies_list = [movie.to_dict() for movie in moviestemp]
-    movies_json = json.dumps(movies_list, ensure_ascii=False)
-    return JSONResponse(movies_json)
-    #moviestemp = db.query(Movie).all()
-
-    #movies_dict_list = [movie.to_dict() for movie in moviestemp]  # Convertir cada película a un diccionario
-    #movies_json = json.dumps(movies_dict_list) 
-    #return JSONResponse(movies_json)
+    result = db.query(MovieModel).all()
+    return JSONResponse(status_code=200,content=jsonable_encoder(result))
+    
 
 @app.get('/movies/{id}', tags =['movies'])
 def get_movie(id:int = Path(ge=1,le=2000)):
-    for item in movies:
-        if item["id"] == id:
-            return JSONResponse(content=item)
-    return JSONResponse(content=[])
+    result = db.query(MovieModel).filter(MovieModel.id==id).first()
+    if not result:
+        return JSONResponse(status_code=404,content={'message':'sin resultado'})
+    return JSONResponse(status_code=200,content=jsonable_encoder(result))
 
 @app.get('/movies/', tags=['movies'])
 def get_movies_by_category(category:str=Query(min_length=5,max_length=15)):
+    movies = jsonable_encoder(db.query(MovieModel).all)
     data= [item for item in movies if item['category'] == category]
     return JSONResponse(content=data)
 
