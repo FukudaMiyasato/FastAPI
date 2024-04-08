@@ -10,7 +10,7 @@ Base.metadata.create_all(bind=engine)
 
 class Movie(BaseModel):
     id: Optional[int] = None
-    title:str = Field(min_length=5, max_length=15)
+    title:str = Field(min_length=3, max_length=25)
     overview: str
     year: int
     rating: float
@@ -21,8 +21,7 @@ class Movie(BaseModel):
             "example":{
                 "id":1,
                 "title":"Descripción de la película",
-                "year":2022,
-
+                "year":2022
             }
         }
 
@@ -32,7 +31,7 @@ app = FastAPI()
 app.title = "Mi aplicación con FastAPI"
 app.version = '0.0.1'
 
-movies =[
+movies2 =[
     {
         "id":1,
         "title":'Avatar',
@@ -50,6 +49,10 @@ movies =[
         "category":"Accion"
     }
 ]
+
+
+db=Session()
+
 @app.get('/', tags=['Home'])
 def root():
     return HTMLResponse('<h1>HOLA</h1>')
@@ -57,7 +60,16 @@ def root():
 
 @app.get('/movies', tags=['movies'], response_model=List[Movie])
 def get_movies()-> List[Movie]:
-    return JSONResponse(content=movies)
+
+    moviestemp = db.query(Movie).all()
+    movies_list = [movie.to_dict() for movie in moviestemp]
+    movies_json = json.dumps(movies_list, ensure_ascii=False)
+    return JSONResponse(movies_json)
+    #moviestemp = db.query(Movie).all()
+
+    #movies_dict_list = [movie.to_dict() for movie in moviestemp]  # Convertir cada película a un diccionario
+    #movies_json = json.dumps(movies_dict_list) 
+    #return JSONResponse(movies_json)
 
 @app.get('/movies/{id}', tags =['movies'])
 def get_movie(id:int = Path(ge=1,le=2000)):
@@ -71,13 +83,14 @@ def get_movies_by_category(category:str=Query(min_length=5,max_length=15)):
     data= [item for item in movies if item['category'] == category]
     return JSONResponse(content=data)
 
+
 @app.post('/movies', tags=['movies'])
 def create_movie(movie :Movie):
-    db=Session()
     new_movie = MovieModel(**movie.dict())
     db.add(new_movie)
     db.commit()
-    return JSONResponse(content=movies)
+    return JSONResponse(content={'message':'se creó'})
+
 @app.put('/movies/{id}', tags=['movies'])
 def update_movie(id:int,movie:Movie):
     for item in movies:
